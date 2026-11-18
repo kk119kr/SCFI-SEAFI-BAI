@@ -485,6 +485,9 @@ function init(){
 (async()=>{
   try{
     const [rows,idx,log]=await Promise.all([load("data/index_values.csv"),load("data/indices.csv"),load("data/collect_log.csv",true)]);
+    try{ const hr=await fetch("api/history?v="+Date.now()); if(hr.ok){ const h=await hr.json(), have=new Set(rows.map(r=>r.index_code+"|"+r.date));
+      for(const r of h.series||[]) if(!have.has(r.code+"|"+r.date)) rows.push({date:r.date,index_code:r.code,value:String(r.value),frequency:"W",origin:"자동수집",flag:"",note:""});
+      for(const l of h.log||[]) log.push(l); } }catch(e){}
     state.rows=rows; state.idx=idx.map(i=>({...i,sort_order:+i.sort_order})); state.log=log;
     $("app").style.display=""; init();
   }catch(e){
