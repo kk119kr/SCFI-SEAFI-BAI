@@ -92,7 +92,7 @@ footer{font-size:12px;color:var(--mute)}
         <button class="btn" id="rawXlsx" style="background:var(--navy);color:#fff;border-color:var(--navy)">엑셀 파일(.xlsx) 내려받기</button>
       </span>
     </div>
-    <div class="note" style="margin:0 0 8px">선택한 기간의 원본 주간값입니다. 월~일을 한 주로 묶어 BAI·SCFI·SEAFI를 한 줄에 놓았고, 각 지수의 실제 기준일은 오른쪽 열에 있습니다. 엑셀 파일에는 이 표(가로)와 지수별 원본(세로, 메모 포함) 두 시트가 들어 있습니다.</div>
+    <div class="note" style="margin:0 0 8px">선택한 기간의 원본 주간값입니다. 월~일을 한 주로 묶어 BAI·SCFI·SEAFI를 한 줄에 놓았고, 각 지수의 실제 기준일은 오른쪽 열에 있습니다. 엑셀 파일은 BAI·SCFI·SEAFI가 시트별로 나뉘어 있고(출처·메모 포함), 마지막 '주별 비교' 시트에 이 표가 들어 있습니다.</div>
     <div class="tablewrap" style="max-height:300px"><table id="rawTbl"><thead></thead><tbody></tbody></table></div>
     <div class="note" id="fileInfo"></div>
     <div class="note" id="rawMsg"></div>
@@ -356,16 +356,22 @@ function zipStore(files){
   end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true); end.setUint32(12,csz,true); end.setUint32(16,off,true);
   return new Blob([...parts,...cen,new Uint8Array(end.buffer)],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
 }
+function indexSheetRows(code){
+  const rows=[["기준일","값","주기","출처","표시","메모"]];
+  for(const p of inRange(seriesOf(code))) rows.push([{d:p.t},p.v,p.freq==="M"?"월간":"주간",p.origin||"",p.flag==="확인필요"?"확인필요":"",p.note||""]);
+  return rows;
+}
 function buildXlsx(){
   const NS='xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"', H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const sheets=[...RAW_CODES.map(c=>({name:c,rows:indexSheetRows(c),widths:[12,12,8,10,10,60]})),{name:"주별 비교",rows:[RAW_HEAD,...rawRows()],widths:[18,11,11,11,13,13,13]}];
+  const n=sheets.length, seq=Array.from({length:n},(_,k)=>k+1);
   return zipStore([
-    {name:"[Content_Types].xml",text:H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'},
+    {name:"[Content_Types].xml",text:H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+seq.map(k=>`<Override PartName="/xl/worksheets/sheet${k}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")+'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'},
     {name:"_rels/.rels",text:H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
-    {name:"xl/workbook.xml",text:H+`<workbook ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="원자료(가로)" sheetId="1" r:id="rId1"/><sheet name="원자료(세로)" sheetId="2" r:id="rId2"/></sheets></workbook>`},
-    {name:"xl/_rels/workbook.xml.rels",text:H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'},
+    {name:"xl/workbook.xml",text:H+`<workbook ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>`+sheets.map((sh,k)=>`<sheet name="${xe(sh.name)}" sheetId="${k+1}" r:id="rId${k+1}"/>`).join("")+`</sheets></workbook>`},
+    {name:"xl/_rels/workbook.xml.rels",text:H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+seq.map(k=>`<Relationship Id="rId${k}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${k}.xml"/>`).join("")+`<Relationship Id="rId${n+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
     {name:"xl/styles.xml",text:H+`<styleSheet ${NS}><numFmts count="1"><numFmt numFmtId="164" formatCode="yyyy\\-mm\\-dd"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Malgun Gothic"/></font><font><b/><sz val="11"/><name val="Malgun Gothic"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`},
-    {name:"xl/worksheets/sheet1.xml",text:sheetXml([RAW_HEAD,...rawRows()],[18,11,11,11,13,13,13])},
-    {name:"xl/worksheets/sheet2.xml",text:sheetXml(rawLong(),[12,9,12,8,8,10,60])}
+    ...sheets.map((sh,k)=>({name:`xl/worksheets/sheet${k+1}.xml`,text:sheetXml(sh.rows,sh.widths)}))
   ]);
 }
 function copyText(txt){
