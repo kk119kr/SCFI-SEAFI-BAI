@@ -87,12 +87,14 @@ footer{font-size:12px;color:var(--mute)}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
       <h2 style="margin:0">원자료 (엑셀용)</h2><span class="sub" id="rawSub"></span>
       <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="fileLink">내 PC 파일 연결</button>
         <button class="btn" id="rawCopy">복사 (엑셀에 붙여넣기)</button>
         <button class="btn" id="rawXlsx" style="background:var(--navy);color:#fff;border-color:var(--navy)">엑셀 파일(.xlsx) 내려받기</button>
       </span>
     </div>
     <div class="note" style="margin:0 0 8px">선택한 기간의 원본 주간값입니다. 월~일을 한 주로 묶어 BAI·SCFI·SEAFI를 한 줄에 놓았고, 각 지수의 실제 기준일은 오른쪽 열에 있습니다. 엑셀 파일에는 이 표(가로)와 지수별 원본(세로, 메모 포함) 두 시트가 들어 있습니다.</div>
     <div class="tablewrap" style="max-height:300px"><table id="rawTbl"><thead></thead><tbody></tbody></table></div>
+    <div class="note" id="fileInfo"></div>
     <div class="note" id="rawMsg"></div>
   </section>
   <section class="panel" style="margin-top:14px">
@@ -372,6 +374,47 @@ function copyText(txt){
   const ok=document.execCommand("copy"); ta.remove(); return ok?Promise.resolve():Promise.reject(new Error("복사 실패"));
 }
 
+// ───────── 내 PC 파일 연결 (크롬·엣지) ─────────
+// 처음 한 번 CSV 파일을 고르면, 이후 새 값이 생길 때마다 그 파일 끝에 자동으로 추가한다.
+const FILE_HEAD="기준일,지수,값,주기,출처,표시,메모";
+const FILE_CODES=["BAI","SCFI","SEAFI"];
+const fileOK=typeof window.showSaveFilePicker==="function";
+function idb(){ return new Promise((res,rej)=>{ const q=indexedDB.open("freight-index",1); q.onupgradeneeded=()=>q.result.createObjectStore("kv"); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+async function idbGet(k){ try{ const d=await idb(); return await new Promise(r=>{ const q=d.transaction("kv").objectStore("kv").get(k); q.onsuccess=()=>r(q.result); q.onerror=()=>r(null); }); }catch(e){ return null; } }
+async function idbSet(k,v){ try{ const d=await idb(); await new Promise((r,j)=>{ const tx=d.transaction("kv","readwrite"); if(v===null) tx.objectStore("kv").delete(k); else tx.objectStore("kv").put(v,k); tx.oncomplete=r; tx.onerror=()=>j(tx.error); }); }catch(e){} }
+function fileLine(r){ return [r.date,r.index_code,r.value,r.frequency==="M"?"월간":"주간",r.origin||"",r.flag==="확인필요"?"확인필요":"",'"'+(r.note||"").replace(/"/g,'""')+'"'].join(","); }
+// 파일에 없는 행만 끝에 덧붙인다. 파일이 비어 있으면 머리글과 전체 이력을 쓴다. 덧붙인 건수를 돌려준다.
+async function syncFile(handle){
+  const f=await handle.getFile(); const text=await f.text(); const size=f.size;
+  const have=new Set(text.trim()?parseCSV(text).map(r=>r["지수"]+"|"+r["기준일"]):[]);
+  const miss=state.rows.filter(r=>FILE_CODES.includes(r.index_code)&&!have.has(r.index_code+"|"+r.date))
+    .sort((a,b)=>a.date.localeCompare(b.date)||a.index_code.localeCompare(b.index_code));
+  const w=await handle.createWritable({keepExistingData:true});
+  if(!text.trim()){ await w.truncate(0); await w.write("\ufeff"+FILE_HEAD+"\n"+miss.map(fileLine).join("\n")+(miss.length?"\n":"")); }
+  else if(miss.length){ await w.seek(size); await w.write((text.endsWith("\n")?"":"\n")+miss.map(fileLine).join("\n")+"\n"); }
+  await w.close(); return miss.length;
+}
+async function filePerm(handle){
+  if(!handle) return false;
+  try{ if(await handle.queryPermission({mode:"readwrite"})==="granted") return true; return (await handle.requestPermission({mode:"readwrite"}))==="granted"; }catch(e){ return false; }
+}
+async function drawFileInfo(){
+  const el=$("fileInfo"), btn=$("fileLink");
+  if(!fileOK){ btn.style.display="none"; el.textContent="내 PC 파일 연결은 크롬·엣지에서만 쓸 수 있습니다."; return; }
+  const h=await idbGet("handle");
+  btn.textContent=h?"연결 파일 바꾸기/해제":"내 PC 파일 연결";
+  el.textContent=h?`연결된 파일: ${h.name} — '최신값 가져오기'를 누르면 새 값이 이 파일 끝에 추가됩니다. (페이지를 새로 열면 수정 허용을 한 번 물어봅니다)`:"파일을 연결하면 가져온 값이 내 PC의 CSV 파일에 쌓입니다. 엑셀로 열어 쓸 수 있습니다.";
+}
+async function linkFile(){
+  const old=await idbGet("handle");
+  if(old&&confirm("연결을 해제할까요? (확인=해제, 취소=다른 파일로 바꾸기)")){ await idbSet("handle",null); $("rawMsg").textContent="연결을 해제했습니다. 파일 자체는 그대로 남아 있습니다."; return drawFileInfo(); }
+  try{
+    const h=await window.showSaveFilePicker({suggestedName:"운임지수_이력.csv",types:[{description:"CSV 파일",accept:{"text/csv":[".csv"]}}]});
+    const n=await syncFile(h); await idbSet("handle",h);
+    $("rawMsg").textContent=`'${h.name}' 연결 완료. ${n}건을 기록했습니다.`; drawFileInfo();
+  }catch(e){ if(e&&e.name!=="AbortError") $("rawMsg").textContent="파일 연결 실패: "+e.message; }
+}
+
 // ───────── 조작 ─────────
 function setRange(fromMs,toMs){ state.from=fromMs; state.to=toMs; $("from").value=iso(fromMs); $("to").value=iso(toMs); state.shown=60; render(); }
 function init(){
@@ -393,8 +436,10 @@ function init(){
     const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+head+body],{type:"text/csv;charset=utf-8"})); a.download=`운임지수_${iso(state.from)}_${iso(state.to)}.csv`; a.click(); };
   $("rawCopy").onclick=()=>copyText(rawTSV()).then(()=>{ $("rawMsg").textContent="복사했습니다. 엑셀에서 A1 칸을 선택하고 붙여넣기(Ctrl+V) 하세요."; },()=>{ $("rawMsg").textContent="복사하지 못했습니다. 엑셀 파일 내려받기를 이용해 주세요."; });
   $("rawXlsx").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(buildXlsx()); a.download=`운임지수_원자료_${iso(state.from)}_${iso(state.to)}.xlsx`; a.click(); $("rawMsg").textContent="엑셀 파일을 내려받았습니다."; };
+  $("fileLink").onclick=linkFile; drawFileInfo();
   $("fetchBtn").onclick=async()=>{
     const btn=$("fetchBtn"), msg=$("fetchMsg"); btn.disabled=true; msg.textContent="가져오는 중…";
+    const fh=fileOK?await idbGet("handle"):null, fok=fh?await filePerm(fh):false;
     try{
       const r=await fetch("api/collect?v="+Date.now()); if(!r.ok) throw new Error("이 주소에서는 수집 기능을 쓸 수 없습니다 (HTTP "+r.status+")");
       const j=await r.json(), oldLatest=Math.max(...state.rows.map(x=>t(x.date))); let added=0; const bad=[];
@@ -408,7 +453,9 @@ function init(){
       $("from").max=$("to").max=iso(newLatest);
       if(state.to>=oldLatest) { state.to=newLatest; $("to").value=iso(newLatest); }
       render();
-      msg.textContent=(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받을 수 있습니다.":"");
+      let saved="";
+      if(fh){ if(!fok) saved="연결 파일 수정이 허용되지 않아 파일에는 기록하지 못했습니다. "; else { try{ const n=await syncFile(fh); saved=n?`연결 파일(${fh.name})에 ${n}건을 추가했습니다. `:`연결 파일(${fh.name})은 이미 최신입니다. `; }catch(e){ saved="파일 기록 실패: "+e.message+" "; } } }
+      msg.textContent=(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+saved+(fh?"":(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받거나 'PC 파일 연결'을 쓰세요.":""));
     }catch(e){ msg.textContent="실패: "+e.message; }
     btn.disabled=false;
   };
