@@ -66,7 +66,9 @@ footer{font-size:12px;color:var(--mute)}
   <span><label>시작일 </label><input type="date" id="from"></span>
   <span><label>종료일 </label><input type="date" id="to"></span>
   <span class="seg" id="unit"></span>
+  <button class="btn" id="fetchBtn" style="background:var(--navy);color:#fff;border-color:var(--navy)">최신값 가져오기</button>
   <button class="btn" onclick="window.print()">인쇄 / PDF</button>
+  <span class="sub" id="fetchMsg"></span>
 </div>
 <div id="err"></div>
 <main id="app" style="display:none">
@@ -391,6 +393,25 @@ function init(){
     const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+head+body],{type:"text/csv;charset=utf-8"})); a.download=`운임지수_${iso(state.from)}_${iso(state.to)}.csv`; a.click(); };
   $("rawCopy").onclick=()=>copyText(rawTSV()).then(()=>{ $("rawMsg").textContent="복사했습니다. 엑셀에서 A1 칸을 선택하고 붙여넣기(Ctrl+V) 하세요."; },()=>{ $("rawMsg").textContent="복사하지 못했습니다. 엑셀 파일 내려받기를 이용해 주세요."; });
   $("rawXlsx").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(buildXlsx()); a.download=`운임지수_원자료_${iso(state.from)}_${iso(state.to)}.xlsx`; a.click(); $("rawMsg").textContent="엑셀 파일을 내려받았습니다."; };
+  $("fetchBtn").onclick=async()=>{
+    const btn=$("fetchBtn"), msg=$("fetchMsg"); btn.disabled=true; msg.textContent="가져오는 중…";
+    try{
+      const r=await fetch("api/collect?v="+Date.now()); if(!r.ok) throw new Error("이 주소에서는 수집 기능을 쓸 수 없습니다 (HTTP "+r.status+")");
+      const j=await r.json(), oldLatest=Math.max(...state.rows.map(x=>t(x.date))); let added=0; const bad=[];
+      for(const code of ["BAI","SCFI","SEAFI"]){
+        if(j.errors&&j.errors[code]){ bad.push(code); continue; }
+        for(const [date,val] of (j[code]||[])){
+          if(state.rows.some(x=>x.index_code===code&&x.date===date)) continue;
+          state.rows.push({date,index_code:code,value:String(val),frequency:"W",origin:"화면수집",flag:"",note:"화면에서 가져옴(저장소에는 미반영)"}); added++; }
+      }
+      const newLatest=Math.max(...state.rows.map(x=>t(x.date)));
+      $("from").max=$("to").max=iso(newLatest);
+      if(state.to>=oldLatest) { state.to=newLatest; $("to").value=iso(newLatest); }
+      render();
+      msg.textContent=(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받을 수 있습니다.":"");
+    }catch(e){ msg.textContent="실패: "+e.message; }
+    btn.disabled=false;
+  };
   setRange(latest-365*DAY, latest);
 }
 (async()=>{
