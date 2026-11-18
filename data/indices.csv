@@ -1,0 +1,5 @@
+index_code,display_name,frequency,source_url,warn_pct,sort_order,color,auto_collect
+BAI,BAI (Baltic Air Freight Index),W,https://dashboard.tacindex.com/detail?route=BAI00&routeType=basket,30,1,#003766,Y
+SCFI,SCFI (Shanghai Containerized Freight Index),W,https://en.sse.net.cn/indices/scfinew.jsp,30,2,#5BB3E5,Y
+SEAFI,SEAFI (Southeast Asia Freight Index),W,https://en.sse.net.cn/indices/seafinew2.jsp,30,3,#E07B00,Y
+RIR,소매업체 재고/매출 비율 (참고),M,https://fred.stlouisfed.org/data/RETAILIRSA,30,4,#7A7A7A,N
