@@ -419,7 +419,7 @@ async function drawFileInfo(){
   if(!fileOK){ btn.style.display="none"; el.textContent="내 PC 파일 연결은 크롬·엣지에서만 쓸 수 있습니다."; return; }
   const h=await idbGet("handle");
   btn.textContent=h?"연결 파일 바꾸기/해제":"내 PC 파일 연결";
-  el.textContent=h?`연결된 파일: ${h.name} — '최신값 가져오기'를 누르면 새 값이 이 파일 끝에 추가됩니다. (페이지를 새로 열면 수정 허용을 물어보며, 허용하기 전에는 파일의 값이 리포트에 반영되지 않습니다)`:"파일을 연결하면 가져온 값이 내 PC의 CSV 파일에 쌓입니다. 엑셀로 열어 쓸 수 있습니다.";
+  el.textContent=h?`연결된 파일: ${h.name} — '최신값 가져오기'를 누르면 새 값이 이 파일 끝에 추가됩니다. (페이지를 열 때 자동으로 새 값을 가져와 이 파일에 추가합니다. 브라우저가 수정 허용을 요구하면 '최신값 가져오기'를 한 번 눌러 허용해 주세요)`:"파일을 연결하면 가져온 값이 내 PC의 CSV 파일에 쌓입니다. 엑셀로 열어 쓸 수 있습니다.";
 }
 async function linkFile(){
   const old=await idbGet("handle");
@@ -454,12 +454,10 @@ function init(){
   $("rawCopy").onclick=()=>copyText(rawTSV()).then(()=>{ $("rawMsg").textContent="복사했습니다. 엑셀에서 A1 칸을 선택하고 붙여넣기(Ctrl+V) 하세요."; },()=>{ $("rawMsg").textContent="복사하지 못했습니다. 엑셀 파일 내려받기를 이용해 주세요."; });
   $("rawXlsx").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(buildXlsx()); a.download=`운임지수_원자료_${iso(state.from)}_${iso(state.to)}.xlsx`; a.click(); $("rawMsg").textContent="엑셀 파일을 내려받았습니다."; };
   $("fileLink").onclick=linkFile; drawFileInfo();
-  if(fileOK) (async()=>{ const h=await idbGet("handle"); if(!h) return; try{
-    if(await h.queryPermission({mode:"readwrite"})!=="granted") return;
-    const ol=Math.max(...state.rows.map(x=>t(x.date))), n=await mergeFromFile(h); if(n){ extendRange(ol); render(); $("rawMsg").textContent=`연결 파일에서 ${n}건을 불러와 반영했습니다.`; } }catch(e){} })();
-  $("fetchBtn").onclick=async()=>{
+
+  const doFetch=async(auto)=>{
     const btn=$("fetchBtn"), msg=$("fetchMsg"); btn.disabled=true; msg.textContent="가져오는 중…";
-    const fh=fileOK?await idbGet("handle"):null, fok=fh?await filePerm(fh):false;
+    const fh=fileOK?await idbGet("handle"):null, fok=fh?(auto?(await fh.queryPermission({mode:"readwrite"}).catch(()=>"denied"))==="granted":await filePerm(fh)):false;
     let fromFile=0; if(fok){ try{ const ol=Math.max(...state.rows.map(x=>t(x.date))); fromFile=await mergeFromFile(fh); if(fromFile){ extendRange(ol); render(); } }catch(e){} }
     try{
       const r=await fetch("api/collect?v="+Date.now()); if(!r.ok) throw new Error("이 주소에서는 수집 기능을 쓸 수 없습니다 (HTTP "+r.status+")");
@@ -475,11 +473,13 @@ function init(){
       if(state.to>=oldLatest) { state.to=newLatest; $("to").value=iso(newLatest); }
       render();
       let saved="";
-      if(fh){ if(!fok) saved="연결 파일 수정이 허용되지 않아 파일에는 기록하지 못했습니다. "; else { try{ const n=await syncFile(fh); saved=n?`연결 파일(${fh.name})에 ${n}건을 추가했습니다. `:`연결 파일(${fh.name})은 이미 최신입니다. `; }catch(e){ saved="파일 기록 실패: "+e.message+" "; } } }
+      if(fh){ if(!fok) saved=auto?"연결 파일은 아직 허용 전이라 기록하지 않았습니다. '최신값 가져오기'를 눌러 허용해 주세요. ":"연결 파일 수정이 허용되지 않아 파일에는 기록하지 못했습니다. "; else { try{ const n=await syncFile(fh); saved=n?`연결 파일(${fh.name})에 ${n}건을 추가했습니다. `:`연결 파일(${fh.name})은 이미 최신입니다. `; }catch(e){ saved="파일 기록 실패: "+e.message+" "; } } }
       msg.textContent=(fromFile?`연결 파일에서 ${fromFile}건을 불러왔습니다. `:"")+(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+saved+(fh?"":(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받거나 'PC 파일 연결'을 쓰세요.":""));
-    }catch(e){ msg.textContent="실패: "+e.message; }
+    }catch(e){ msg.textContent=(auto?"자동 가져오기 실패(버튼으로 다시 시도하세요): ":"실패: ")+e.message; }
     btn.disabled=false;
   };
+  $("fetchBtn").onclick=()=>doFetch(false);
+  doFetch(true); // 페이지를 열 때마다 최신값을 자동으로 가져온다
   setRange(latest-365*DAY, latest);
 }
 (async()=>{
