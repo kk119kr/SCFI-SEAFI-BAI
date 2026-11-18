@@ -289,9 +289,9 @@ function render(){
   $("tblSub").textContent=`${iso(state.from)} ~ ${iso(state.to)} · ${rows.length}건`;
   drawTable(); drawRaw();
   // 수집 현황
-  const bad=state.rows.filter(r=>r.flag==="확인필요").length, last=state.log.slice(-6).reverse();
+  const bad=state.rows.filter(r=>r.flag==="확인필요"&&r.index_code!=="RIR").length, badRir=state.rows.filter(r=>r.flag==="확인필요"&&r.index_code==="RIR").length, last=state.log.slice(-6).reverse();
   $("status").innerHTML=(last.length?last.map(l=>`${l.run_at} · ${l.index_code} · <span class="${l.status==="실패"?"bad":l.status==="경고"?"warn":"ok"}">${l.status}</span>${l.rows_added>0?` (+${l.rows_added})`:""} ${l.message||""}`).join("<br>"):"아직 자동 수집 기록이 없습니다.")
-    +`<br><span class="${bad?"warn":""}">확인필요 표시 데이터 ${bad}건 (표의 '표시' 열 참고)</span>`;
+    +`<br><span class="${bad?"warn":""}">확인필요 표시 데이터 ${bad}건 (BAI·SCFI·SEAFI, 표의 '표시' 열 참고)</span>`+(badRir?`<br><span class="warn">참고지표(RIR) ${badRir}건은 FRED 공개값과 달라 별도 확인 중 (오른쪽 RIR 패널 참고)</span>`:"");
   $("src").innerHTML="출처: "+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}</a>`).join(" · ");
 }
 function drawTable(){
