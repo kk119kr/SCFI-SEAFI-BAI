@@ -1,4 +1,4 @@
-// Cloudflare Pages Function: /api/collect
+// Cloudflare Worker: /api/collect 만 처리하고, 나머지 요청은 정적 파일(페이지·데이터)로 넘긴다.
 // 브라우저는 지수 사이트에 직접 접속할 수 없으므로(보안 규칙), 이 코드가 대신 받아 JSON으로 돌려준다.
 // 저장은 하지 않는다. 반환 형식: { SCFI:[["2026-11-13",3572.33],...], SEAFI:[...], BAI:[...], errors:{...} }
 const UA = "Mozilla/5.0 (compatible; freight-index-report)";
@@ -34,7 +34,7 @@ const JOBS = {
   BAI: async () => parseBai(await getJson("https://api.tacindex.com/bai/?currency=USD")),
 };
 
-export async function onRequestGet() {
+async function collect() {
   const out = { errors: {} };
   await Promise.all(
     Object.entries(JOBS).map(async ([k, fn]) => {
@@ -45,3 +45,11 @@ export async function onRequestGet() {
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === "/api/collect") return collect();
+    return env.ASSETS.fetch(request);
+  },
+};
