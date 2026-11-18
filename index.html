@@ -394,6 +394,22 @@ async function syncFile(handle){
   else if(miss.length){ await w.seek(size); await w.write((text.endsWith("\n")?"":"\n")+miss.map(fileLine).join("\n")+"\n"); }
   await w.close(); return miss.length;
 }
+// 연결 파일의 값을 화면 데이터에 합친다(저장소 이력에 없는 날짜만). 새로 합친 건수를 돌려준다.
+async function mergeFromFile(handle){
+  const text=await (await handle.getFile()).text(); if(!text.trim()) return 0; let n=0;
+  const rev={"월간":"M","주간":"W"};
+  for(const r of parseCSV(text)){
+    const code=r["지수"], date=r["기준일"], v=r["값"];
+    if(!FILE_CODES.includes(code)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(parseFloat(v))) continue;
+    if(state.rows.some(x=>x.index_code===code&&x.date===date)) continue;
+    state.rows.push({date,index_code:code,value:String(parseFloat(v)),frequency:rev[r["주기"]]||"W",origin:r["출처"]||"파일",flag:r["표시"]==="확인필요"?"확인필요":"",note:r["메모"]||"내 PC 파일에서 불러옴"}); n++;
+  }
+  return n;
+}
+function extendRange(oldLatest){
+  const nl=Math.max(...state.rows.map(x=>t(x.date))); $("from").max=$("to").max=iso(nl);
+  if(state.to>=oldLatest){ state.to=nl; $("to").value=iso(nl); }
+}
 async function filePerm(handle){
   if(!handle) return false;
   try{ if(await handle.queryPermission({mode:"readwrite"})==="granted") return true; return (await handle.requestPermission({mode:"readwrite"}))==="granted"; }catch(e){ return false; }
@@ -403,15 +419,16 @@ async function drawFileInfo(){
   if(!fileOK){ btn.style.display="none"; el.textContent="내 PC 파일 연결은 크롬·엣지에서만 쓸 수 있습니다."; return; }
   const h=await idbGet("handle");
   btn.textContent=h?"연결 파일 바꾸기/해제":"내 PC 파일 연결";
-  el.textContent=h?`연결된 파일: ${h.name} — '최신값 가져오기'를 누르면 새 값이 이 파일 끝에 추가됩니다. (페이지를 새로 열면 수정 허용을 한 번 물어봅니다)`:"파일을 연결하면 가져온 값이 내 PC의 CSV 파일에 쌓입니다. 엑셀로 열어 쓸 수 있습니다.";
+  el.textContent=h?`연결된 파일: ${h.name} — '최신값 가져오기'를 누르면 새 값이 이 파일 끝에 추가됩니다. (페이지를 새로 열면 수정 허용을 물어보며, 허용하기 전에는 파일의 값이 리포트에 반영되지 않습니다)`:"파일을 연결하면 가져온 값이 내 PC의 CSV 파일에 쌓입니다. 엑셀로 열어 쓸 수 있습니다.";
 }
 async function linkFile(){
   const old=await idbGet("handle");
   if(old&&confirm("연결을 해제할까요? (확인=해제, 취소=다른 파일로 바꾸기)")){ await idbSet("handle",null); $("rawMsg").textContent="연결을 해제했습니다. 파일 자체는 그대로 남아 있습니다."; return drawFileInfo(); }
   try{
     const h=await window.showSaveFilePicker({suggestedName:"운임지수_이력.csv",types:[{description:"CSV 파일",accept:{"text/csv":[".csv"]}}]});
+    const ol=Math.max(...state.rows.map(x=>t(x.date))), got=await mergeFromFile(h); if(got){ extendRange(ol); render(); }
     const n=await syncFile(h); await idbSet("handle",h);
-    $("rawMsg").textContent=`'${h.name}' 연결 완료. ${n}건을 기록했습니다.`; drawFileInfo();
+    $("rawMsg").textContent=`'${h.name}' 연결 완료. 파일에서 ${got}건을 불러오고 ${n}건을 기록했습니다.`; drawFileInfo();
   }catch(e){ if(e&&e.name!=="AbortError") $("rawMsg").textContent="파일 연결 실패: "+e.message; }
 }
 
@@ -437,9 +454,13 @@ function init(){
   $("rawCopy").onclick=()=>copyText(rawTSV()).then(()=>{ $("rawMsg").textContent="복사했습니다. 엑셀에서 A1 칸을 선택하고 붙여넣기(Ctrl+V) 하세요."; },()=>{ $("rawMsg").textContent="복사하지 못했습니다. 엑셀 파일 내려받기를 이용해 주세요."; });
   $("rawXlsx").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(buildXlsx()); a.download=`운임지수_원자료_${iso(state.from)}_${iso(state.to)}.xlsx`; a.click(); $("rawMsg").textContent="엑셀 파일을 내려받았습니다."; };
   $("fileLink").onclick=linkFile; drawFileInfo();
+  if(fileOK) (async()=>{ const h=await idbGet("handle"); if(!h) return; try{
+    if(await h.queryPermission({mode:"readwrite"})!=="granted") return;
+    const ol=Math.max(...state.rows.map(x=>t(x.date))), n=await mergeFromFile(h); if(n){ extendRange(ol); render(); $("rawMsg").textContent=`연결 파일에서 ${n}건을 불러와 반영했습니다.`; } }catch(e){} })();
   $("fetchBtn").onclick=async()=>{
     const btn=$("fetchBtn"), msg=$("fetchMsg"); btn.disabled=true; msg.textContent="가져오는 중…";
     const fh=fileOK?await idbGet("handle"):null, fok=fh?await filePerm(fh):false;
+    let fromFile=0; if(fok){ try{ const ol=Math.max(...state.rows.map(x=>t(x.date))); fromFile=await mergeFromFile(fh); if(fromFile){ extendRange(ol); render(); } }catch(e){} }
     try{
       const r=await fetch("api/collect?v="+Date.now()); if(!r.ok) throw new Error("이 주소에서는 수집 기능을 쓸 수 없습니다 (HTTP "+r.status+")");
       const j=await r.json(), oldLatest=Math.max(...state.rows.map(x=>t(x.date))); let added=0; const bad=[];
@@ -455,7 +476,7 @@ function init(){
       render();
       let saved="";
       if(fh){ if(!fok) saved="연결 파일 수정이 허용되지 않아 파일에는 기록하지 못했습니다. "; else { try{ const n=await syncFile(fh); saved=n?`연결 파일(${fh.name})에 ${n}건을 추가했습니다. `:`연결 파일(${fh.name})은 이미 최신입니다. `; }catch(e){ saved="파일 기록 실패: "+e.message+" "; } } }
-      msg.textContent=(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+saved+(fh?"":(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받거나 'PC 파일 연결'을 쓰세요.":""));
+      msg.textContent=(fromFile?`연결 파일에서 ${fromFile}건을 불러왔습니다. `:"")+(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+saved+(fh?"":(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받거나 'PC 파일 연결'을 쓰세요.":""));
     }catch(e){ msg.textContent="실패: "+e.message; }
     btn.disabled=false;
   };
