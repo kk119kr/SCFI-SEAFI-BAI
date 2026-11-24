@@ -26,6 +26,8 @@ main{padding:16px 24px 28px;max-width:1900px;margin:0 auto}
 .card h3 .go:hover{color:var(--c,var(--navy));border-color:var(--c,var(--navy))}
 .srcs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 .srcs a{font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 11px;background:#fff}
+.toplinks{margin:0;padding:8px 24px;background:#fff;border-bottom:1px solid var(--line)}
+.toplinks span{font-size:12px;color:var(--mute)}
 .srcs a:hover{border-color:var(--navy);color:var(--navy)}
 .srcs a small{color:var(--mute);margin-left:4px}
 .card .big{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:2px 0 0}
@@ -58,7 +60,7 @@ footer{font-size:12px;color:var(--mute)}
 .src a{color:var(--navy)}
 #err{display:none;margin:20px 24px;padding:14px;background:#fff3f2;border:1px solid #f0c4c0;border-radius:8px}
 @media (max-width:1100px){.cards,.charts,.row2{grid-template-columns:1fr}}
-@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;font-size:11px}.bar,.btn,#more,.go{display:none!important}.tablewrap{max-height:none}.panel,.card{break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;font-size:11px}.bar,.btn,#more,.go,.toplinks{display:none!important}.tablewrap{max-height:none}.panel,.card{break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
@@ -67,6 +69,7 @@ footer{font-size:12px;color:var(--mute)}
   <span>BAI · SCFI · SEAFI</span>
   <span class="meta" id="meta">불러오는 중…</span>
 </header>
+<div class="srcs toplinks" id="topLinks"></div>
 <div class="bar" id="controls">
   <span class="seg" id="quick"></span>
   <span><label>시작일 </label><input type="date" id="from"></span>
@@ -299,6 +302,7 @@ function render(){
   $("status").innerHTML=(last.length?last.map(l=>`${l.run_at} · ${l.index_code} · <span class="${l.status==="실패"?"bad":l.status==="경고"?"warn":"ok"}">${l.status}</span>${l.rows_added>0?` (+${l.rows_added})`:""} ${l.message||""}`).join("<br>"):"아직 자동 수집 기록이 없습니다.")
     +`<br><span class="${bad?"warn":""}">확인필요 표시 데이터 ${bad}건 (BAI·SCFI·SEAFI, 표의 '표시' 열 참고)</span>`+(badRir?`<br><span class="warn">참고지표(RIR) ${badRir}건은 FRED 공개값과 달라 별도 확인 중 (오른쪽 RIR 패널 참고)</span>`:"");
   const SRC_NAME={BAI:"TAC Index",SCFI:"상하이항운교역소(SSE)",SEAFI:"상하이항운교역소(SSE)",RIR:"FRED (미국 세인트루이스 연준)"};
+  $("topLinks").innerHTML="<span>원문 바로가기</span>"+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}<small>${SRC_NAME[i.index_code]||""} ↗</small></a>`).join("");
   $("src").innerHTML='<div class="srcs"><span>원문 사이트</span>'+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}<small>${SRC_NAME[i.index_code]||""} ↗</small></a>`).join("")+"</div>";
 }
 function drawTable(){
