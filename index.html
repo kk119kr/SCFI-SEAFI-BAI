@@ -21,7 +21,13 @@ header .meta{margin-left:auto;font-size:12.5px;opacity:.85}
 main{padding:16px 24px 28px;max-width:1900px;margin:0 auto}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--c,var(--navy));border-radius:10px;padding:12px 16px}
-.card h3{margin:0;font-size:13px;color:var(--mute);font-weight:600}
+.card h3{margin:0;font-size:13px;color:var(--mute);font-weight:600;display:flex;align-items:baseline;gap:8px}
+.card h3 .go{margin-left:auto;font-size:11.5px;font-weight:500;color:var(--mute);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.card h3 .go:hover{color:var(--c,var(--navy));border-color:var(--c,var(--navy))}
+.srcs{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.srcs a{font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:3px 11px;background:#fff}
+.srcs a:hover{border-color:var(--navy);color:var(--navy)}
+.srcs a small{color:var(--mute);margin-left:4px}
 .card .big{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:2px 0 0}
 .card .asof{font-size:12px;color:var(--mute)}
 .card .deltas{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
@@ -52,7 +58,7 @@ footer{font-size:12px;color:var(--mute)}
 .src a{color:var(--navy)}
 #err{display:none;margin:20px 24px;padding:14px;background:#fff3f2;border:1px solid #f0c4c0;border-radius:8px}
 @media (max-width:1100px){.cards,.charts,.row2{grid-template-columns:1fr}}
-@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;font-size:11px}.bar,.btn,#more{display:none!important}.tablewrap{max-height:none}.panel,.card{break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;font-size:11px}.bar,.btn,#more,.go{display:none!important}.tablewrap{max-height:none}.panel,.card{break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
@@ -249,7 +255,7 @@ function render(){
     const pts=view(ix.index_code), last=pts[pts.length-1], d=deltas(ix.index_code,pts), lb=UL[state.unit];
     const raw=inRange(seriesOf(ix.index_code));
     const hi=raw.length?raw.reduce((a,b)=>b.v>a.v?b:a):null, lo=raw.length?raw.reduce((a,b)=>b.v<a.v?b:a):null;
-    cards+=`<div class="card" style="--c:${ix.color}"><h3>${ix.display_name}</h3>
+    cards+=`<div class="card" style="--c:${ix.color}"><h3><span>${ix.display_name}</span><a class="go" href="${ix.source_url}" target="_blank" rel="noopener" title="원문 사이트에서 직접 확인">원문 ↗</a></h3>
       <div class="big">${last?fmt(last.v):"-"}</div><div class="asof">${last?last.label:"선택 기간에 데이터 없음"}${last&&last.flag==="확인필요"?' <span class="warn">⚠ 확인필요</span>':""}</div>
       <div class="deltas">${lb.map((l,i)=>l?`<div class="d">${l} 대비${pctHTML(d[i])}</div>`:"").join("")}</div>
       <div class="hl">${hi?`기간 최고 ${fmt(hi.v)} (${hi.date}) · 최저 ${fmt(lo.v)} (${lo.date})`:""}</div></div>`;
@@ -292,7 +298,8 @@ function render(){
   const bad=state.rows.filter(r=>r.flag==="확인필요"&&r.index_code!=="RIR").length, badRir=state.rows.filter(r=>r.flag==="확인필요"&&r.index_code==="RIR").length, last=state.log.slice(-6).reverse();
   $("status").innerHTML=(last.length?last.map(l=>`${l.run_at} · ${l.index_code} · <span class="${l.status==="실패"?"bad":l.status==="경고"?"warn":"ok"}">${l.status}</span>${l.rows_added>0?` (+${l.rows_added})`:""} ${l.message||""}`).join("<br>"):"아직 자동 수집 기록이 없습니다.")
     +`<br><span class="${bad?"warn":""}">확인필요 표시 데이터 ${bad}건 (BAI·SCFI·SEAFI, 표의 '표시' 열 참고)</span>`+(badRir?`<br><span class="warn">참고지표(RIR) ${badRir}건은 FRED 공개값과 달라 별도 확인 중 (오른쪽 RIR 패널 참고)</span>`:"");
-  $("src").innerHTML="출처: "+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}</a>`).join(" · ");
+  const SRC_NAME={BAI:"TAC Index",SCFI:"상하이항운교역소(SSE)",SEAFI:"상하이항운교역소(SSE)",RIR:"FRED (미국 세인트루이스 연준)"};
+  $("src").innerHTML='<div class="srcs"><span>원문 사이트</span>'+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}<small>${SRC_NAME[i.index_code]||""} ↗</small></a>`).join("")+"</div>";
 }
 function drawTable(){
   const r=state.tableRows.slice(0,state.shown);
