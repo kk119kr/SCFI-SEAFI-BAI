@@ -9,7 +9,8 @@
   },
   "kv_namespaces": [{ "binding": "HISTORY" }],
   "triggers": {
-    // UTC 기준. 화 10:00(KST, BAI), 금 18:00(KST, SCFI·SEAFI), 토 10:00(KST, 누락 보완)
-    "crons": ["0 1 * * 2", "0 9 * * 5", "0 1 * * 6"]
+    // UTC 기준. 요일은 숫자가 아니라 이름으로 쓴다(Cloudflare는 1=일요일이라 헷갈림).
+    // 월 10:00(KST, BAI), 금 18:00(KST, SCFI·SEAFI), 토 10:00(KST, 누락 보완)
+    "crons": ["0 1 * * MON", "0 9 * * FRI", "0 1 * * SAT"]
   }
 }

@@ -416,9 +416,10 @@ function extendRange(oldLatest){
   const nl=Math.max(...state.rows.map(x=>t(x.date))); $("from").max=$("to").max=iso(nl);
   if(state.to>=oldLatest){ state.to=nl; $("to").value=iso(nl); }
 }
+const withTimeout=(pr,ms,what)=>Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej(new Error(what+" 응답이 없어 중단했습니다")),ms))]);
 async function filePerm(handle){
   if(!handle) return false;
-  try{ if(await handle.queryPermission({mode:"readwrite"})==="granted") return true; return (await handle.requestPermission({mode:"readwrite"}))==="granted"; }catch(e){ return false; }
+  try{ if(await withTimeout(handle.queryPermission({mode:"readwrite"}),5000,"파일 권한 확인")==="granted") return true; return (await withTimeout(handle.requestPermission({mode:"readwrite"}),30000,"파일 수정 허용"))==="granted"; }catch(e){ return false; }
 }
 async function drawFileInfo(){
   const el=$("fileInfo"), btn=$("fileLink");
@@ -463,10 +464,10 @@ function init(){
 
   const doFetch=async(auto)=>{
     const btn=$("fetchBtn"), msg=$("fetchMsg"); btn.disabled=true; msg.textContent="가져오는 중…";
-    const fh=fileOK?await idbGet("handle"):null, fok=fh?(auto?(await fh.queryPermission({mode:"readwrite"}).catch(()=>"denied"))==="granted":await filePerm(fh)):false;
-    let fromFile=0; if(fok){ try{ const ol=Math.max(...state.rows.map(x=>t(x.date))); fromFile=await mergeFromFile(fh); if(fromFile){ extendRange(ol); render(); } }catch(e){} }
+    const fh=fileOK?await idbGet("handle"):null, fok=fh?(auto?(await withTimeout(fh.queryPermission({mode:"readwrite"}),5000,"파일 권한 확인").catch(()=>"denied"))==="granted":(msg.textContent="파일 수정 허용을 기다리는 중… (브라우저 위쪽 허용창을 확인하세요)",await filePerm(fh))):false;
+    let fromFile=0; if(fok){ try{ const ol=Math.max(...state.rows.map(x=>t(x.date))); fromFile=await withTimeout(mergeFromFile(fh),15000,"파일 읽기"); if(fromFile){ extendRange(ol); render(); } }catch(e){} }
     try{
-      const r=await fetch("api/collect?v="+Date.now()); if(!r.ok) throw new Error("이 주소에서는 수집 기능을 쓸 수 없습니다 (HTTP "+r.status+")");
+      msg.textContent="지수 사이트에서 가져오는 중…"; const ac=new AbortController(), tm=setTimeout(()=>ac.abort(),20000); let r; try{ r=await fetch("api/collect?v="+Date.now(),{signal:ac.signal}); }catch(e){ throw new Error(e.name==="AbortError"?"20초 안에 응답이 없어 중단했습니다. 잠시 후 다시 눌러 주세요":e.message); } finally{ clearTimeout(tm); } if(!r.ok) throw new Error("이 주소에서는 수집 기능을 쓸 수 없습니다 (HTTP "+r.status+")");
       const j=await r.json(), oldLatest=Math.max(...state.rows.map(x=>t(x.date))); let added=0; const bad=[];
       for(const code of ["BAI","SCFI","SEAFI"]){
         if(j.errors&&j.errors[code]){ bad.push(code); continue; }
@@ -479,7 +480,7 @@ function init(){
       if(state.to>=oldLatest) { state.to=newLatest; $("to").value=iso(newLatest); }
       render();
       let saved="";
-      if(fh){ if(!fok) saved=auto?"연결 파일은 아직 허용 전이라 기록하지 않았습니다. '최신값 가져오기'를 눌러 허용해 주세요. ":"연결 파일 수정이 허용되지 않아 파일에는 기록하지 못했습니다. "; else { try{ const n=await syncFile(fh); saved=n?`연결 파일(${fh.name})에 ${n}건을 추가했습니다. `:`연결 파일(${fh.name})은 이미 최신입니다. `; }catch(e){ saved="파일 기록 실패: "+e.message+" "; } } }
+      if(fh){ if(!fok) saved=auto?"연결 파일은 아직 허용 전이라 기록하지 않았습니다. '최신값 가져오기'를 눌러 허용해 주세요. ":"연결 파일 수정이 허용되지 않아 파일에는 기록하지 못했습니다. "; else { try{ const n=await withTimeout(syncFile(fh),15000,"파일 쓰기"); saved=n?`연결 파일(${fh.name})에 ${n}건을 추가했습니다. `:`연결 파일(${fh.name})은 이미 최신입니다. `; }catch(e){ saved="파일 기록 실패: "+e.message+" "; } } }
       msg.textContent=(fromFile?`연결 파일에서 ${fromFile}건을 불러왔습니다. `:"")+(added?`새 값 ${added}건을 반영했습니다. `:"새 값이 없습니다(이미 최신). ")+(bad.length?`가져오지 못한 지수: ${bad.join(", ")}. `:"")+saved+(fh?"":(added?"이 화면에서만 보이며, 아래 '원자료'에서 엑셀로 내려받거나 'PC 파일 연결'을 쓰세요.":""));
     }catch(e){ msg.textContent=(auto?"자동 가져오기 실패(버튼으로 다시 시도하세요): ":"실패: ")+e.message; }
     btn.disabled=false;
