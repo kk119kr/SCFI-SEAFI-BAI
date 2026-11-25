@@ -37,6 +37,23 @@ main{padding:16px 24px 28px;max-width:1900px;margin:0 auto}
 .card .deltas{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
 .d{font-size:12px;color:var(--mute)}
 .d b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+table.grid{font-size:14px;table-layout:fixed}
+table.grid th,table.grid td{text-align:center}
+table.grid th:first-child{width:24%}
+table.grid th{padding:9px 14px;background:var(--navy);color:#fff;font-size:12.5px;letter-spacing:.03em;top:0}
+table.grid th.l,table.grid td.l{text-align:left}
+table.grid td{padding:9px 14px;border-bottom:1px solid #eef2f6;vertical-align:top}
+table.grid td.l{font-weight:600;color:var(--navy);white-space:nowrap}
+table.grid tbody tr:nth-child(even){background:#f8fafc}
+table.grid tbody tr:hover{background:#eef5fb}
+table.grid td b.v{display:block;font-size:15px;font-weight:600;color:var(--ink)}
+table.grid td small{display:block;font-size:11.5px;margin-top:1px}
+table.grid td.na{color:#b7c0ca}
+.period{margin:2px 0 8px;padding:9px 12px;background:#eef5fb;border:1px solid #cfe2f3;border-radius:8px;font-size:13.5px;color:var(--navy)}
+.period span{color:var(--mute);font-size:12px;margin-left:4px}
+.cpy{margin-left:auto;font-size:11.5px;color:var(--mute);background:#fff;border:1px solid var(--line);border-radius:999px;padding:1px 10px;cursor:pointer}
+.cpy:hover{border-color:var(--navy);color:var(--navy)}
+.panel h2.ch{display:flex;align-items:center;gap:8px}
 .up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--mute)}
 .hl{font-size:12px;color:var(--mute);margin-top:6px}
 .charts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
@@ -62,7 +79,7 @@ footer{font-size:12px;color:var(--mute)}
 .src a{color:var(--navy)}
 #err{display:none;margin:20px 24px;padding:14px;background:#fff3f2;border:1px solid #f0c4c0;border-radius:8px}
 @media (max-width:1100px){.cards,.charts,.row2{grid-template-columns:1fr}}
-@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;font-size:11px}.bar,.btn,#more,.go,.toplinks{display:none!important}.tablewrap{max-height:none}.panel,.card{break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+@media print{@page{size:A4 landscape;margin:10mm}body{background:#fff;font-size:11px}.bar,.btn,#more,.go,.toplinks,.cpy{display:none!important}.tablewrap{max-height:none}.panel,.card{break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 </style>
 </head>
 <body>
@@ -87,13 +104,13 @@ footer{font-size:12px;color:var(--mute)}
   <section class="cards" id="cards"></section>
   <section class="charts" id="charts"></section>
   <section class="row2">
-    <div class="panel"><h2>상대 비교 <span class="sub" id="cmpSub"></span></h2><div class="legend" id="cmpLegend"></div><div id="cmp"></div></div>
+    <div class="panel"><h2 class="ch">상대 비교 <span class="sub" id="cmpSub"></span><button class="cpy" data-for="cmp" data-name="상대비교">이미지 복사</button></h2><div class="legend" id="cmpLegend"></div><div id="cmp"></div></div>
     <div class="panel"><h2 id="rirTitle">참고 지수</h2><div id="rir"></div><div class="note" id="rirNote"></div></div>
   </section>
   <section class="panel" style="margin-top:14px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><h2 style="margin:0">데이터 표</h2><span class="sub" id="tblSub"></span><span style="margin-left:auto"><button class="btn" id="dl">선택 기간 CSV 내려받기</button></span></div>
-    <div class="tablewrap"><table><thead><tr><th>기준일</th><th>지수</th><th>값</th><th id="chgH">전기 대비</th><th>주기</th><th>표시</th></tr></thead><tbody id="tbody"></tbody></table></div>
-    <div style="margin-top:8px"><button class="btn" id="more">더 보기</button></div>
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px"><h2 style="margin:0;font-size:15px">기간별 지수 한눈에 보기</h2><span class="sub" id="tblSub"></span></div>
+    <div class="tablewrap" id="gridWrap"><table class="grid"><thead><tr><th class="l" id="gridH">기간</th><th>BAI</th><th>SCFI</th><th>SEAFI</th></tr></thead><tbody id="tbody"></tbody></table></div>
+    <div class="note" style="margin:8px 0 0">값 아래 작은 숫자는 직전 대비 증감입니다(<span class="up">빨강 ▲ 상승</span>, <span class="down">파랑 ▼ 하락</span>). ⚠는 확인이 필요한 값입니다. <button class="btn" id="more" style="margin-left:8px">더 보기</button></div>
   </section>
   <section class="panel" style="margin-top:14px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
@@ -104,8 +121,8 @@ footer{font-size:12px;color:var(--mute)}
         <button class="btn" id="rawXlsx" style="background:var(--navy);color:#fff;border-color:var(--navy)">엑셀 파일(.xlsx) 내려받기</button>
       </span>
     </div>
-    <div class="note" style="margin:0 0 8px">선택한 기간의 원본 주간값입니다. 월~일을 한 주로 묶어 BAI·SCFI·SEAFI를 한 줄에 놓았고, 각 지수의 실제 기준일은 오른쪽 열에 있습니다. 엑셀 파일은 BAI·SCFI·SEAFI가 시트별로 나뉘어 있고(출처·메모 포함), 마지막 '주별 비교' 시트에 이 표가 들어 있습니다.</div>
-    <div class="tablewrap" style="max-height:300px"><table id="rawTbl"><thead></thead><tbody></tbody></table></div>
+    <div class="period" id="rawPeriod"></div>
+    <div class="note" style="margin:0 0 8px">엑셀 파일은 BAI·SCFI·SEAFI가 시트별로 나뉘어 있고(출처·메모 포함), 마지막 '주별 비교' 시트에 월~일을 한 주로 묶은 비교표가 들어 있습니다. '복사' 버튼은 그 비교표를 붙여넣기용으로 복사합니다.</div>
     <div class="note" id="fileInfo"></div>
     <div class="note" id="rawMsg"></div>
   </section>
@@ -265,7 +282,7 @@ function render(){
       <div class="big">${last?fmt(last.v):"-"}</div><div class="asof">${last?last.label:"선택 기간에 데이터 없음"}${last&&last.flag==="확인필요"?' <span class="warn">⚠ 확인필요</span>':""}</div>
       <div class="deltas">${lb.map((l,i)=>l?`<div class="d">${l} 대비${pctHTML(d[i])}</div>`:"").join("")}</div>
       <div class="hl">${hi?`기간 최고 ${fmt(hi.v)} (${hi.date}) · 최저 ${fmt(lo.v)} (${lo.date})`:""}</div></div>`;
-    charts+=`<div class="panel"><h2>${ix.display_name.split(" (")[0]} 추이 <span class="sub">${state.unit==="W"?"주간":state.unit==="M"?"월 평균":"연 평균"}</span></h2><div id="ch_${ix.index_code}"></div></div>`;
+    charts+=`<div class="panel"><h2 class="ch">${ix.display_name.split(" (")[0]} 추이 <span class="sub">${state.unit==="W"?"주간":state.unit==="M"?"월 평균":"연 평균"}</span><button class="cpy" data-for="ch_${ix.index_code}" data-name="${ix.index_code}_추이">이미지 복사</button></h2><div id="ch_${ix.index_code}"></div></div>`;
     cmp.push({ix,pts});
   }
   $("cards").innerHTML=cards; $("charts").innerHTML=charts;
@@ -297,21 +314,26 @@ function render(){
     for(const p of sv){ const i=all.findIndex(a=>a.t===p.t); rows.push({...p,code:ix.index_code,chg:i>0?pct(p.v,all[i-1].v):null}); }
   }
   rows.sort((a,b)=>b.t-a.t||a.code.localeCompare(b.code)); state.tableRows=rows;
-  $("chgH").textContent=state.unit==="W"?"전주(전회) 대비":state.unit==="M"?"전월 대비":"전년 대비";
-  $("tblSub").textContent=`${iso(state.from)} ~ ${iso(state.to)} · ${rows.length}건`;
+    $("tblSub").textContent=`${iso(state.from)} ~ ${iso(state.to)}`;
   drawTable(); drawRaw();
   // 수집 현황
   const bad=state.rows.filter(r=>r.flag==="확인필요"&&r.index_code!=="RIR").length, badRir=state.rows.filter(r=>r.flag==="확인필요"&&r.index_code==="RIR").length, last=state.log.slice(-6).reverse();
   $("status").innerHTML=(last.length?last.map(l=>`${l.run_at} · ${l.index_code} · <span class="${l.status==="실패"?"bad":l.status==="경고"?"warn":"ok"}">${l.status}</span>${l.rows_added>0?` (+${l.rows_added})`:""} ${l.message||""}`).join("<br>"):"아직 자동 수집 기록이 없습니다.")
-    +`<br><span class="${bad?"warn":""}">확인필요 표시 데이터 ${bad}건 (BAI·SCFI·SEAFI, 표의 '표시' 열 참고)</span>`+(badRir?`<br><span class="warn">참고지표(RIR) ${badRir}건은 FRED 공개값과 달라 별도 확인 중 (오른쪽 RIR 패널 참고)</span>`:"");
+    +`<br><span class="${bad?"warn":""}">확인필요 표시 데이터 ${bad}건 (BAI·SCFI·SEAFI, 표의 ⚠ 표시 참고)</span>`+(badRir?`<br><span class="warn">참고지표(RIR) ${badRir}건은 FRED 공개값과 달라 별도 확인 중 (오른쪽 RIR 패널 참고)</span>`:"");
   const SRC_NAME={BAI:"TAC Index",SCFI:"상하이항운교역소(SSE)",SEAFI:"상하이항운교역소(SSE)",RIR:"FRED (미국 세인트루이스 연준)"};
   $("topLinks").innerHTML="<span>원문 바로가기</span>"+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}<small>${SRC_NAME[i.index_code]||""} ↗</small></a>`).join("");
   $("src").innerHTML='<div class="srcs"><span>원문 사이트</span>'+state.idx.map(i=>`<a href="${i.source_url}" target="_blank" rel="noopener">${i.index_code}<small>${SRC_NAME[i.index_code]||""} ↗</small></a>`).join("")+"</div>";
 }
 function drawTable(){
-  const r=state.tableRows.slice(0,state.shown);
-  $("tbody").innerHTML=r.map(p=>`<tr><td>${p.label||p.date}</td><td>${p.code}</td><td>${fmt(p.v)}</td><td>${p.chg==null?"-":(p.chg>0?"+":"")+p.chg.toFixed(1)+"%"}</td><td>${p.freq==="M"?"월간":"주간"}</td><td>${p.flag==="확인필요"?`<span class="warn" title="${(p.note||"").replace(/"/g,"&quot;")}">⚠ 확인필요</span>`:""}</td></tr>`).join("");
-  $("more").style.display=state.shown<state.tableRows.length?"":"none";
+  const CORE=["BAI","SCFI","SEAFI"], W=state.unit==="W", m=new Map();
+  for(const p of state.tableRows){ if(!CORE.includes(p.code)) continue;
+    const key=W?p.t-((new Date(p.t).getUTCDay()+6)%7)*DAY:(p.label||p.date);
+    if(!m.has(key)) m.set(key,{key,t:p.t,lab:W?iso(key)+" 주":(p.label||p.date)}); m.get(key)[p.code]=p; }
+  const all=[...m.values()].sort((a,b)=>b.t-a.t); state.gridRows=all;
+  $("gridH").textContent=W?"주 (월요일 시작)":state.unit==="M"?"월":"연도";
+  const cell=(p)=>p?`<td><b class="v">${fmt(p.v)}${p.flag==="확인필요"?` <span class="warn" title="${(p.note||"").replace(/"/g,"&quot;")}">⚠</span>`:""}</b><small>${pctHTML(p.chg)}</small></td>`:'<td class="na">–</td>';
+  $("tbody").innerHTML=all.slice(0,state.shown).map(r=>`<tr><td class="l">${r.lab}</td>${CORE.map(c=>cell(r[c])).join("")}</tr>`).join("");
+  $("more").style.display=state.shown<all.length?"":"none";
 }
 
 // ───────── 원자료: 화면 표 · 복사 · 엑셀(.xlsx) ─────────
@@ -331,10 +353,27 @@ function rawLong(){
   return out;
 }
 function cellText(c){ return c==null?"":typeof c==="object"?iso(c.d):String(c); }
+async function copyChart(btn){
+  const svg=document.querySelector("#"+btn.dataset.for+" svg"), old=btn.textContent;
+  const say=t=>{ btn.textContent=t; setTimeout(()=>btn.textContent=old,2500); };
+  if(!svg){ say("차트 없음"); return; }
+  try{
+    const vb=svg.viewBox.baseVal, w=vb.width, h=vb.height, c=svg.cloneNode(true);
+    c.setAttribute("xmlns","http://www.w3.org/2000/svg"); c.setAttribute("width",w); c.setAttribute("height",h);
+    c.querySelectorAll(".hit,.tipdot").forEach(n=>n.remove());
+    c.insertAdjacentHTML("afterbegin",`<rect x="${vb.x}" y="${vb.y}" width="${w}" height="${h}" fill="#fff"/>`);
+    const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(c)],{type:"image/svg+xml;charset=utf-8"}));
+    const img=new Image(); await new Promise((ok,no)=>{ img.onload=ok; img.onerror=no; img.src=url; });
+    const cv=document.createElement("canvas"); cv.width=w*2; cv.height=h*2; const g=cv.getContext("2d"); g.scale(2,2); g.drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+    const blob=await new Promise(r=>cv.toBlob(r,"image/png"));
+    try{ await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]); say("복사됨 · 엑셀에 붙여넣기"); }
+    catch(_){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`${btn.dataset.name}_${iso(state.from)}_${iso(state.to)}.png`; a.click(); say("PNG로 저장됨"); }
+  }catch(_){ say("복사 실패"); }
+}
 function drawRaw(){
-  const rows=rawRows(); $("rawSub").textContent=`${iso(state.from)} ~ ${iso(state.to)} · ${rows.length}주`;
-  $("rawTbl").querySelector("thead").innerHTML="<tr>"+RAW_HEAD.map(h=>`<th>${h}</th>`).join("")+"</tr>";
-  $("rawTbl").querySelector("tbody").innerHTML=rows.slice().reverse().map(r=>"<tr>"+r.map((c,i)=>`<td>${i>=1&&i<=3?(c==null?"":fmt(c)):cellText(c)}</td>`).join("")+"</tr>").join("");
+  const n=rawRows().length;
+  $("rawSub").textContent="";
+  $("rawPeriod").innerHTML=`📅 내려받는 기간: <b>${iso(state.from)} ~ ${iso(state.to)}</b> (${n}주) <span>— 맨 위 기간 설정에서 바꿀 수 있습니다</span>`;
 }
 function rawTSV(){ return [RAW_HEAD,...rawRows()].map(r=>r.map(cellText).join("\t")).join("\n"); }
 
@@ -468,10 +507,8 @@ function init(){
   const dateChange=()=>{ if(!$("from").value||!$("to").value) return; [...$("quick").children].forEach(x=>x.classList.remove("on"));
     const a=t($("from").value), b=t($("to").value); if(a>b) return; state.from=a; state.to=b; state.shown=60; render(); };
   $("from").onchange=$("to").onchange=dateChange;
+  document.addEventListener("click",e=>{ const b=e.target.closest(".cpy"); if(b) copyChart(b); });
   $("more").onclick=()=>{ state.shown+=100; drawTable(); };
-  $("dl").onclick=()=>{
-    const head="기준일,지수,값,주기,표시,메모\n"; const body=state.tableRows.slice().reverse().map(p=>[p.date,p.code,p.v,p.freq==="M"?"월간":"주간",p.flag==="확인필요"?"확인필요":"",'"'+(p.note||"").replace(/"/g,'""')+'"'].join(",")).join("\n");
-    const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+head+body],{type:"text/csv;charset=utf-8"})); a.download=`운임지수_${iso(state.from)}_${iso(state.to)}.csv`; a.click(); };
   $("rawCopy").onclick=()=>copyText(rawTSV()).then(()=>{ $("rawMsg").textContent="복사했습니다. 엑셀에서 A1 칸을 선택하고 붙여넣기(Ctrl+V) 하세요."; },()=>{ $("rawMsg").textContent="복사하지 못했습니다. 엑셀 파일 내려받기를 이용해 주세요."; });
   $("rawXlsx").onclick=()=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(buildXlsx()); a.download=`운임지수_원자료_${iso(state.from)}_${iso(state.to)}.xlsx`; a.click(); $("rawMsg").textContent="엑셀 파일을 내려받았습니다."; };
   $("fileLink").onclick=linkFile; drawFileInfo();
