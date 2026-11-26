@@ -56,6 +56,8 @@ table.grid td.l{font-weight:600;color:var(--navy);white-space:nowrap}
 table.grid tbody tr:nth-child(even){background:#f8fafc}
 table.grid tbody tr:hover{background:#eef5fb}
 table.grid td b.v{display:block;font-size:15px;font-weight:600;color:var(--ink)}
+table.grid td b.v.up,.card .big.up{color:var(--up)}
+table.grid td b.v.down,.card .big.down{color:var(--down)}
 table.grid td small{display:block;font-size:11.5px;margin-top:1px}
 table.grid td.na{color:#b7c0ca}
 .period{margin:2px 0 8px;padding:9px 12px;background:#eef5fb;border:1px solid #cfe2f3;border-radius:8px;font-size:13.5px;color:var(--navy)}
@@ -175,6 +177,7 @@ const t = s => Date.parse(s+"T00:00:00Z");
 const iso = ms => new Date(ms).toISOString().slice(0,10);
 const fmt = (v,d=2) => v==null?"-":v.toLocaleString("ko-KR",{maximumFractionDigits:d});
 const pct = (a,b) => (b==null||b===0||a==null)?null:(a/b-1)*100;
+const dirCls=p=>p==null?"":p>0.005?"up":p<-0.005?"down":"flat";
 function pctHTML(p){
   if(p==null) return '<b class="flat">-</b>';
   const cls=p>0.005?"up":p<-0.005?"down":"flat", ar=p>0.005?"▲":p<-0.005?"▼":"–";
@@ -289,7 +292,7 @@ function render(){
     const raw=inRange(seriesOf(ix.index_code));
     const hi=raw.length?raw.reduce((a,b)=>b.v>a.v?b:a):null, lo=raw.length?raw.reduce((a,b)=>b.v<a.v?b:a):null;
     cards+=`<div class="card" style="--c:${ix.color}"><h3><span>${ix.display_name}</span><a class="go" href="${ix.source_url}" target="_blank" rel="noopener" title="원문 사이트에서 직접 확인">원문 ↗</a></h3>
-      <div class="big">${last?fmt(last.v):"-"}</div><div class="asof">${last?last.label:"선택 기간에 데이터 없음"}${last&&last.flag==="확인필요"?' <span class="warn">⚠ 확인필요</span>':""}</div>
+      <div class="big ${dirCls(d[0])}">${last?fmt(last.v):"-"}</div><div class="asof">${last?last.label:"선택 기간에 데이터 없음"}${last&&last.flag==="확인필요"?' <span class="warn">⚠ 확인필요</span>':""}</div>
       ${raw.length>1?(()=>{const a=raw[0],z=raw[raw.length-1],df=z.v-a.v;return `<div class="span"><div class="sl">선택 기간 변화</div><div class="sv"><span>${fmt(a.v)}<small>${a.date}</small></span><i>→</i><span>${fmt(z.v)}<small>${z.date}</small></span><div class="sd">${pctHTML(pct(z.v,a.v))}<small class="${df>0?"up":df<0?"down":"flat"}">${df>0?"+":""}${fmt(df)}</small></div></div></div>`})():""}
       <div class="deltas">${lb.map((l,i)=>l?`<div class="d">${l} 대비${pctHTML(d[i])}</div>`:"").join("")}</div>
       <div class="hl">${hi?`기간 최고 ${fmt(hi.v)} (${hi.date}) · 최저 ${fmt(lo.v)} (${lo.date})`:""}</div></div>`;
@@ -342,7 +345,7 @@ function drawTable(){
     if(!m.has(key)) m.set(key,{key,t:p.t,lab:W?iso(key)+" 주":(p.label||p.date)}); m.get(key)[p.code]=p; }
   const all=[...m.values()].sort((a,b)=>b.t-a.t); state.gridRows=all;
   $("gridH").textContent=W?"주 (월요일 시작)":state.unit==="M"?"월":"연도";
-  const cell=(p)=>p?`<td><b class="v">${fmt(p.v)}${p.flag==="확인필요"?` <span class="warn" title="${(p.note||"").replace(/"/g,"&quot;")}">⚠</span>`:""}</b><small>${pctHTML(p.chg)}</small></td>`:'<td class="na">–</td>';
+  const cell=(p)=>p?`<td><b class="v ${dirCls(p.chg)}">${fmt(p.v)}${p.flag==="확인필요"?` <span class="warn" title="${(p.note||"").replace(/"/g,"&quot;")}">⚠</span>`:""}</b><small>${pctHTML(p.chg)}</small></td>`:'<td class="na">–</td>';
   $("tbody").innerHTML=all.slice(0,state.shown).map(r=>`<tr><td class="l">${r.lab}</td>${CORE.map(c=>cell(r[c])).join("")}</tr>`).join("");
   $("more").style.display=state.shown<all.length?"":"none";
 }
