@@ -35,6 +35,14 @@ main{padding:16px 24px 28px;max-width:1900px;margin:0 auto}
 .srcs a small{color:var(--mute);margin-left:4px}
 .card .big{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:2px 0 0}
 .card .asof{font-size:12px;color:var(--mute)}
+.span{margin-top:10px;padding:8px 10px;background:#f4f8fc;border-radius:8px}
+.span .sl{font-size:11.5px;color:var(--mute);margin-bottom:3px}
+.span .sv{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.span .sv span{font-size:16px;font-weight:600;color:var(--ink)}
+.span .sv span small{display:block;font-size:10.5px;font-weight:400;color:var(--mute)}
+.span .sv i{font-style:normal;color:var(--mute)}
+.span .sd{margin-left:auto;text-align:right}
+.span .sd small{display:block;font-size:11.5px;font-weight:600}
 .card .deltas{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
 .d{font-size:12px;color:var(--mute)}
 .d b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
@@ -282,6 +290,7 @@ function render(){
     const hi=raw.length?raw.reduce((a,b)=>b.v>a.v?b:a):null, lo=raw.length?raw.reduce((a,b)=>b.v<a.v?b:a):null;
     cards+=`<div class="card" style="--c:${ix.color}"><h3><span>${ix.display_name}</span><a class="go" href="${ix.source_url}" target="_blank" rel="noopener" title="원문 사이트에서 직접 확인">원문 ↗</a></h3>
       <div class="big">${last?fmt(last.v):"-"}</div><div class="asof">${last?last.label:"선택 기간에 데이터 없음"}${last&&last.flag==="확인필요"?' <span class="warn">⚠ 확인필요</span>':""}</div>
+      ${raw.length>1?(()=>{const a=raw[0],z=raw[raw.length-1],df=z.v-a.v;return `<div class="span"><div class="sl">선택 기간 변화</div><div class="sv"><span>${fmt(a.v)}<small>${a.date}</small></span><i>→</i><span>${fmt(z.v)}<small>${z.date}</small></span><div class="sd">${pctHTML(pct(z.v,a.v))}<small class="${df>0?"up":df<0?"down":"flat"}">${df>0?"+":""}${fmt(df)}</small></div></div></div>`})():""}
       <div class="deltas">${lb.map((l,i)=>l?`<div class="d">${l} 대비${pctHTML(d[i])}</div>`:"").join("")}</div>
       <div class="hl">${hi?`기간 최고 ${fmt(hi.v)} (${hi.date}) · 최저 ${fmt(lo.v)} (${lo.date})`:""}</div></div>`;
     charts+=`<div class="panel"><h2 class="ch">${ix.display_name.split(" (")[0]} 추이 <span class="sub">${state.unit==="W"?"주간":state.unit==="M"?"월 평균":"연 평균"}</span><button class="cpy" data-for="ch_${ix.index_code}" data-name="${ix.index_code}_추이">이미지 복사</button></h2><div id="ch_${ix.index_code}"></div></div>`;
