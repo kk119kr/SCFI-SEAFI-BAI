@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>운임지수 현황 | Business Supporting Team</title>
+<style>
+:root{--navy:#003766;--ink:#1c2733;--mute:#66727f;--line:#dfe5ec;--up:#b3261e;--down:#1b5e9b}
+*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:var(--ink);font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{margin:0;font-size:20px}header .by{font-size:13px;opacity:.85}
+.badge{margin-left:auto;font-size:11px;letter-spacing:.06em;border:1px solid rgba(255,255,255,.6);border-radius:4px;padding:2px 8px}
+main{max-width:1280px;margin:0 auto;padding:18px 24px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.grid a{display:block;text-decoration:none;color:inherit}.grid img{width:100%;height:auto;display:block}
+.foot{margin-top:14px;font-size:12px;color:var(--mute)}.foot a{color:var(--mute)}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;border-top:5px solid var(--c);height:100%}
+.card h3{margin:0;font-size:16px;display:flex;justify-content:space-between;align-items:baseline}.card h3 small{font-size:11px;font-weight:400;color:var(--mute)}
+.sub{font-size:10.5px;color:var(--mute);margin-top:2px}
+.big{font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:10px}.chg{font-size:13px;font-weight:700}.chg i{font-style:normal;font-weight:400;color:var(--mute);font-size:11px;margin-left:4px}
+.up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--mute)}
+svg.sp{width:100%;height:46px;margin-top:8px;display:block}
+.hl{font-size:10.5px;color:#8a96a3;margin-top:4px}.d2{display:flex;gap:18px;margin-top:6px;font-size:11.5px;color:var(--mute);flex-wrap:wrap}.d2 b{margin-left:3px}
+#msg{font-size:12px;color:var(--mute);margin:0 0 10px}
+</style></head><body>
+<header><h1>운임지수 현황</h1><span class="by">by Business Supporting Team</span><span class="badge">TP INTERNAL USE ONLY</span></header>
+<main>
+<p id="msg">불러오는 중…</p>
+<div class="grid" id="grid"></div>
+<div class="foot" id="foot">카드를 누르면 원문 사이트로 이동합니다</div>
+</main>
+<script>
+const API="https://scfi-seafi-bai.gurrb1.workers.dev";
+const nf=(v,d)=>Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
+const dir=p=>p==null?"flat":p>0.005?"up":p<-0.005?"down":"flat";
+const pt=p=>p==null?"-":(p>0.005?"▲ +":p<-0.005?"▼ ":"– ")+p.toFixed(1)+"%";
+function spark(s,col){ if(s.length<2) return ""; const mn=Math.min(...s),mx=Math.max(...s),r=mx-mn||1;
+  const P=s.map((v,i)=>[(i/(s.length-1))*300+2,44-((v-mn)/r)*40]);
+  return `<svg class="sp" viewBox="0 0 304 46" preserveAspectRatio="none"><polyline points="${P.map(x=>x[0].toFixed(1)+","+x[1].toFixed(1)).join(" ")}" fill="none" stroke="${col}" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`; }
+function card(c){
+  if(c.empty) return `<div class="card" style="--c:${c.color}"><h3>${c.code}</h3><div class="sub">${c.sub}</div><div class="big flat">–</div></div>`;
+  const d=dir(c.chg);
+  return `<a href="${c.url}" target="_blank" rel="noopener" title="원문 사이트 열기"><div class="card" style="--c:${c.color}">
+  <h3>${c.code}<small>${c.asof}${c.flag==="확인필요"?" ⚠":""}</small></h3><div class="sub">${c.sub}</div>
+  <div class="big ${d}">${nf(c.value,c.dec)}</div>
+  <div class="chg ${d}">${pt(c.chg)}<i>${c.deltas[0].l} 대비</i></div>
+  ${spark(c.spark,c.color)}
+  <div class="hl">${c.span} 최고 ${nf(c.hi.v,c.dec)} · 최저 ${nf(c.lo.v,c.dec)}</div>
+  <div class="d2">${c.deltas.slice(1).map(x=>`<span>${x.l}<b class="${dir(x.p)}">${pt(x.p)}</b></span>`).join("")}</div></div></a>`;
+}
+async function load(){
+  try{
+    const r=await fetch(API+"/api/cards?fresh=1"); if(!r.ok) throw new Error(r.status);
+    const j=await r.json(); document.getElementById("grid").innerHTML=j.cards.map(card).join("");
+    document.getElementById("msg").textContent="";
+    document.getElementById("foot").textContent="카드를 누르면 원문 사이트로 이동합니다 · 출처: TAC Index(BAI), 상하이항운교역소(SCFI·SEAFI), FRED(RIR, 참고) · 페이지를 열 때마다 최신값으로 갱신됩니다";
+  }catch(e){ document.getElementById("msg").textContent="데이터를 불러오지 못했습니다. 잠시 후 새로고침하세요. (이미지 버전: image.html)"; }
+}
+load();
+</script></body></html>
