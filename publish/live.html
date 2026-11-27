@@ -7,26 +7,27 @@
 header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 header h1{margin:0;font-size:20px}header .by{font-size:13px;opacity:.85}
 .badge{margin-left:auto;font-size:11px;letter-spacing:.06em;border:1px solid rgba(255,255,255,.6);border-radius:4px;padding:2px 8px}
-main{max-width:1280px;margin:0 auto;padding:18px 24px}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.grid{grid-template-columns:1fr}}
+body{background:#e9edf2}.page{width:100%;max-width:794px;min-height:min(1123px,calc(100vw*1.414));margin:0 auto;background:#f3f6fa;display:flex;flex-direction:column}
+main{padding:18px 24px;flex:1}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
 .grid a{display:block;text-decoration:none;color:inherit}.grid img{width:100%;height:auto;display:block}
 .foot{margin-top:14px;font-size:12px;color:var(--mute)}.foot a{color:var(--mute)}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;border-top:5px solid var(--c);height:100%}
-.card h3{margin:0;font-size:16px;display:flex;justify-content:space-between;align-items:baseline}.card h3 small{font-size:11px;font-weight:400;color:var(--mute)}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px 12px 22px;border-left:7px solid var(--c);display:grid;grid-template-columns:1fr 1.1fr;gap:6px 22px}
+.card .l,.card .r{min-width:0}
+.card h3{margin:0;font-size:19px}
 .sub{font-size:10.5px;color:var(--mute);margin-top:2px}
-.big{font-size:34px;font-weight:700;letter-spacing:-.5px;margin-top:10px}.chg{font-size:13px;font-weight:700}.chg i{font-style:normal;font-weight:400;color:var(--mute);font-size:11px;margin-left:4px}
+.big{font-size:42px;font-weight:700;letter-spacing:-.5px;margin-top:10px}.chg{font-size:13px;font-weight:700}.chg i{font-style:normal;font-weight:400;color:var(--mute);font-size:11px;margin-left:4px}
 .up{color:var(--up)}.down{color:var(--down)}.flat{color:var(--mute)}
-svg.sp{width:100%;height:46px;margin-top:8px;display:block}
+svg.sp{width:100%;height:62px;margin-top:6px;display:block}.asof{text-align:right;font-size:11.5px;color:var(--mute)}
 .hl{font-size:10.5px;color:#8a96a3;margin-top:4px}.d2{display:flex;gap:18px;margin-top:6px;font-size:11.5px;color:var(--mute);flex-wrap:wrap}.d2 b{margin-left:3px}
 #msg{font-size:12px;color:var(--mute);margin:0 0 10px}
 </style></head><body>
-<header><h1>운임지수 현황</h1><span class="by">by Business Supporting Team</span><span class="badge">TP INTERNAL USE ONLY</span></header>
+<div class="page"><header><h1>운임지수 현황</h1><span class="by">by Business Supporting Team</span><span class="badge">TP INTERNAL USE ONLY</span></header>
 <main>
 <p id="msg">불러오는 중…</p>
 <div class="grid" id="grid"></div>
 <div class="foot" id="foot">카드를 누르면 원문 사이트로 이동합니다</div>
-</main>
+</main></div>
 <script>
 const API="https://scfi-seafi-bai.gurrb1.workers.dev";
 const nf=(v,d)=>Number(v).toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -39,12 +40,12 @@ function card(c){
   if(c.empty) return `<div class="card" style="--c:${c.color}"><h3>${c.code}</h3><div class="sub">${c.sub}</div><div class="big flat">–</div></div>`;
   const d=dir(c.chg);
   return `<a href="${c.url}" target="_blank" rel="noopener" title="원문 사이트 열기"><div class="card" style="--c:${c.color}">
-  <h3>${c.code}<small>${c.asof}${c.flag==="확인필요"?" ⚠":""}</small></h3><div class="sub">${c.sub}</div>
+  <div class="l"><h3>${c.code}</h3><div class="sub">${c.sub}</div>
   <div class="big ${d}">${nf(c.value,c.dec)}</div>
   <div class="chg ${d}">${pt(c.chg)}<i>${c.deltas[0].l} 대비</i></div>
-  ${spark(c.spark,c.color)}
-  <div class="hl">${c.span} 최고 ${nf(c.hi.v,c.dec)} · 최저 ${nf(c.lo.v,c.dec)}</div>
-  <div class="d2">${c.deltas.slice(1).map(x=>`<span>${x.l}<b class="${dir(x.p)}">${pt(x.p)}</b></span>`).join("")}</div></div></a>`;
+  <div class="d2">${c.deltas.slice(1).map(x=>`<span>${x.l}<b class="${dir(x.p)}">${pt(x.p)}</b></span>`).join("")}</div></div>
+  <div class="r"><div class="asof">${c.asof}${c.flag==="확인필요"?" ⚠":""} 기준</div>${spark(c.spark,c.color)}
+  <div class="hl">${c.span} 최고 ${nf(c.hi.v,c.dec)} (${c.hi.date})<br>${c.span} 최저 ${nf(c.lo.v,c.dec)} (${c.lo.date})</div></div></div></a>`;
 }
 async function load(){
   try{

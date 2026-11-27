@@ -7,13 +7,13 @@
 header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 header h1{margin:0;font-size:20px}header .by{font-size:13px;opacity:.85}
 .badge{margin-left:auto;font-size:11px;letter-spacing:.06em;border:1px solid rgba(255,255,255,.6);border-radius:4px;padding:2px 8px}
-main{max-width:1280px;margin:0 auto;padding:18px 24px}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-@media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.grid{grid-template-columns:1fr}}
+body{background:#e9edf2}.page{width:100%;max-width:794px;min-height:min(1123px,calc(100vw*1.414));margin:0 auto;background:#f3f6fa;display:flex;flex-direction:column}
+main{padding:18px 24px;flex:1}
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
 .grid a{display:block;text-decoration:none;color:inherit}.grid img{width:100%;height:auto;display:block}
 .foot{margin-top:14px;font-size:12px;color:var(--mute)}.foot a{color:var(--mute)}
 </style></head><body>
-<header><h1>운임지수 현황</h1><span class="by">by Business Supporting Team</span><span class="badge">TP INTERNAL USE ONLY</span></header>
+<div class="page"><header><h1>운임지수 현황</h1><span class="by">by Business Supporting Team</span><span class="badge">TP INTERNAL USE ONLY</span></header>
 <main>
 <div class="grid">
 <a href="https://dashboard.tacindex.com/detail?route=BAI00&routeType=basket" target="_blank" rel="noopener"><img alt="BAI" src="https://scfi-seafi-bai.gurrb1.workers.dev/api/card.svg?i=BAI"></a>
@@ -22,4 +22,4 @@ main{max-width:1280px;margin:0 auto;padding:18px 24px}
 <a href="https://fred.stlouisfed.org/data/RETAILIRSA" target="_blank" rel="noopener"><img alt="RIR" src="https://scfi-seafi-bai.gurrb1.workers.dev/api/card.svg?i=RIR"></a>
 </div>
 <div class="foot">카드를 누르면 원문 사이트로 이동합니다 · 출처: TAC Index(BAI), 상하이항운교역소(SCFI·SEAFI), FRED(RIR, 참고) · 값은 매주 자동 갱신됩니다</div>
-</main></body></html>
+</main></div></body></html>

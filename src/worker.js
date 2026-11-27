@@ -165,22 +165,22 @@ const DCOL = { up: "#b3261e", down: "#1b5e9b", flat: "#66727f" };
 const pctTxt = (p) => (p == null ? "-" : (p > 0.005 ? "▲ +" : p < -0.005 ? "▼ " : "– ") + p.toFixed(1) + "%");
 
 function cardSvg(c) {
-  const W = 380, H = 214;
-  let g = `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="12" fill="#fff" stroke="#dfe5ec"/><path d="M12.5 0.5H${W - 12.5}A12 12 0 0 1 ${W - 0.5} 12.5V14H0.5V12.5A12 12 0 0 1 12.5 0.5Z" fill="${c.color}" opacity="0"/><rect x="0.5" y="0.5" width="${W - 1}" height="5" rx="2.5" fill="${c.color}"/>`;
-  g += `<text x="18" y="33" font-size="16" font-weight="700" fill="#1c2733">${xesc(c.code)}</text><text x="18" y="49" font-size="10.5" fill="#66727f">${xesc(c.sub)}</text>`;
-  if (c.empty) g += `<text x="18" y="110" font-size="14" fill="#66727f">데이터 없음</text>`;
+  const W = 720, H = 200;
+  let g = `<rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="12" fill="#fff" stroke="#dfe5ec"/><rect x="0.5" y="0.5" width="7" height="${H - 1}" rx="3.5" fill="${c.color}"/>`;
+  g += `<text x="26" y="36" font-size="19" font-weight="700" fill="#1c2733">${xesc(c.code)}</text><text x="26" y="54" font-size="11" fill="#66727f">${xesc(c.sub)}</text>`;
+  if (c.empty) g += `<text x="26" y="110" font-size="14" fill="#66727f">데이터 없음</text>`;
   else {
     const d = dirOf(c.chg), col = DCOL[d];
-    g += `<text x="${W - 18}" y="33" font-size="11" text-anchor="end" fill="#66727f">${xesc(c.asof)}${c.flag === "확인필요" ? " ⚠" : ""}</text>`;
-    g += `<text x="18" y="94" font-size="36" font-weight="700" fill="${col}">${nf(c.value, c.dec)}</text>`;
-    g += `<text x="18" y="115" font-size="13" font-weight="700" fill="${col}">${pctTxt(c.chg)} <tspan font-weight="400" fill="#66727f" font-size="11">${xesc(c.deltas[0].l)} 대비</tspan></text>`;
-    const sp = c.spark, x0 = 18, x1 = W - 18, y0 = 128, y1 = 168, mn = Math.min(...sp), mx = Math.max(...sp), rg = mx - mn || 1;
+    g += `<text x="26" y="108" font-size="44" font-weight="700" fill="${col}">${nf(c.value, c.dec)}</text>`;
+    g += `<text x="26" y="134" font-size="14" font-weight="700" fill="${col}">${pctTxt(c.chg)} <tspan font-weight="400" fill="#66727f" font-size="11.5">${xesc(c.deltas[0].l)} 대비</tspan></text>`;
+    c.deltas.slice(1).forEach((x, i) => { g += `<text x="${26 + i * 150}" y="174" font-size="12" fill="#66727f">${xesc(x.l)} <tspan font-weight="700" fill="${DCOL[dirOf(x.p)]}">${pctTxt(x.p)}</tspan></text>`; });
+    g += `<text x="${W - 22}" y="34" font-size="11.5" text-anchor="end" fill="#66727f">${xesc(c.asof)}${c.flag === "확인필요" ? " ⚠" : ""} 기준</text>`;
+    const sp = c.spark, x0 = 340, x1 = W - 26, y0 = 52, y1 = 142, mn = Math.min(...sp), mx = Math.max(...sp), rg = mx - mn || 1;
     if (sp.length > 1) {
       const pts = sp.map((v, i) => `${(x0 + (x1 - x0) * (i / (sp.length - 1))).toFixed(1)},${(y1 - ((v - mn) / rg) * (y1 - y0)).toFixed(1)}`);
-      g += `<polyline points="${pts.join(" ")}" fill="none" stroke="${c.color}" stroke-width="1.8" stroke-linejoin="round"/><circle cx="${pts[pts.length - 1].split(",")[0]}" cy="${pts[pts.length - 1].split(",")[1]}" r="3" fill="${c.color}"/>`;
+      g += `<polyline points="${pts.join(" ")}" fill="none" stroke="${c.color}" stroke-width="2" stroke-linejoin="round"/><circle cx="${pts[pts.length - 1].split(",")[0]}" cy="${pts[pts.length - 1].split(",")[1]}" r="3.5" fill="${c.color}"/>`;
     }
-    g += `<text x="18" y="184" font-size="10" fill="#8a96a3">${xesc(c.span)} 최고 ${nf(c.hi.v, c.dec)} · 최저 ${nf(c.lo.v, c.dec)}</text>`;
-    c.deltas.slice(1).forEach((x, i) => { g += `<text x="${18 + i * 170}" y="203" font-size="11.5" fill="#66727f">${xesc(x.l)} <tspan font-weight="700" fill="${DCOL[dirOf(x.p)]}">${pctTxt(x.p)}</tspan></text>`; });
+    g += `<text x="340" y="170" font-size="11" fill="#8a96a3">${xesc(c.span)} 최고 ${nf(c.hi.v, c.dec)} (${xesc(c.hi.date)})</text><text x="340" y="186" font-size="11" fill="#8a96a3">${xesc(c.span)} 최저 ${nf(c.lo.v, c.dec)} (${xesc(c.lo.date)})</text>`;
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="'Noto Sans KR','Malgun Gothic','Apple SD Gothic Neo',Arial,sans-serif">${g}</svg>`;
 }
